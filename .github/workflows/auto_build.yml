@@ -16,3 +16,7 @@ jobs:
       - name: Trigger update-submodules workflow
         run: |
           echo main
+          echo data
+          echo data
+          echo ${{ github.event.client_payload.sha_num }}
+          echo ${{ github.event.client_payload.branch_name }}
