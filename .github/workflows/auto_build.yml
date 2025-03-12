@@ -18,7 +18,7 @@ jobs:
 
       - name: Update submodule to PR commit
         run: |
-            $SubmoduleName = "${{ github.event.client_payload.repo_name }}".Split("/")[1]
+            $SubmoduleName = ${{ github.event.client_payload.repo_name }}
             $SubmoduleStatus = git submodule status
             $SubmodulePath = $SubmoduleStatus.Split(" ")[2]
             
@@ -31,26 +31,27 @@ jobs:
             cd $SubmodulePath
             git fetch origin
             git checkout ${{ github.event.client_payload.sha_num }}
+            echo ${{ github.server_url }}
 
-      # - name: Run script
-      #   id: run-script
-      #   run: |
-      #     call path/to/script.bat  # Replace with the actual path
-      #   continue-on-error: true  # Allows the workflow to proceed even if the script fails
+      - name: Run script
+        id: run-script
+        run: |
+          call ./test/application/sub_modd_test/example.bat  # Replace with the actual path
+        continue-on-error: true  # Allows the workflow to proceed even if the script fails
 
-      # - name: Set status on submodule PR
-      #   uses: actions/github-script@v6
-      #   with:
-      #     github-token: ${{ secrets.SUBMODULE_TOKEN }}
-      #     script: |
-      #       const state = '${{ steps.run-script.outcome }}' === 'success' ? 'success' : 'failure';
-      #       const description = state === 'success' ? 'Script ran successfully' : 'Script failed';
-      #       await github.rest.repos.createCommitStatus({
-      #         owner: '<submodule-owner>',
-      #         repo: '<submodule-repo>',
-      #         sha: '${{ github.event.client_payload.sha }}',
-      #         state: state,
-      #         context: 'main-repo-check',
-      #         description: description,
-      #         target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
-      #       });
+      - name: Set status on submodule PR
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.SUBMODULE_TOKEN }}
+          script: |
+            const state = '${{ steps.run-script.outcome }}' === 'success' ? 'success' : 'failure';
+            const description = state === 'success' ? 'Script ran successfully' : 'Script failed';
+            await github.rest.repos.createCommitStatus({
+              owner: 'YoussefHeshamSalah',
+              repo: '${{ github.event.client_payload.repo_name }}',
+              sha: '${{ github.event.client_payload.sha_num }}',
+              state: state,
+              context: 'main-repo-check',
+              description: description,
+              target_url: '${{ github.server_url }}/${{ github.event.client_payload.repo_name }}/actions/runs/${{ github.event.client_payload.run_id }}'
+            });
