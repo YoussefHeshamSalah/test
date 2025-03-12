@@ -18,7 +18,7 @@ jobs:
 
       - name: Update submodule to PR commit
         run: |
-            $SubmoduleName = ${{ github.event.client_payload.repo_name }}.Split("/")[1]
+            $SubmoduleName = "${{ github.event.client_payload.repo_name }}".Split("/")[1]
             $SubmodulePath = git config --file .gitmodules --get "submodule.$SubmoduleName.path"
 
             if ($SubmodulePath) {
