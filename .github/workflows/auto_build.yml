@@ -5,17 +5,52 @@ on:
     types: [Auto_Build]  # trigger from submodules repositories
 
 jobs:
-  notify:
-    runs-on: Main_Runner  # This label added to the "HP-ZBPG8-TEST2" machine for TWI_ORG_RUNNER runner
+  check:
+    runs-on: Main_Runner  # Required for .bat script
     steps:
-      - name: Checkout repository
+      - name: Checkout repository with submodules
         uses: actions/checkout@v3
         with:
+          clean: true
+          submodules: recursive
           token: ${{ secrets.YOUSSEF_RUNNER }}
-    
-      - name: Trigger update-submodules workflow
+          fetch-depth: 0
+
+      - name: Update submodule to PR commit
         run: |
-          echo ${{ github.event.client_payload.sha_num }}
-          echo ${{ github.event.client_payload.branch_name }}
-          echo ${{ github.event.client_payload.repo_name }}
-          echo ${{ github.event.client_payload.run_id }}
+            $SubmoduleName = "submodule1"  # Change this to your submodule name
+            $SubmodulePath = git config --file .gitmodules --get "submodule.$SubmoduleName.path"
+
+            if ($SubmodulePath) {
+                Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
+                echo "SUBMODULE_PATH=$SubmodulePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+            } else {
+                Write-Error "Submodule '$SubmoduleName' not found!"
+                exit 1
+            }
+            cd SUBMODULE_PATH # Replace with the actual path
+            git fetch origin
+            git checkout ${{ github.event.client_payload.sha_num }}
+
+      # - name: Run script
+      #   id: run-script
+      #   run: |
+      #     call path/to/script.bat  # Replace with the actual path
+      #   continue-on-error: true  # Allows the workflow to proceed even if the script fails
+
+      # - name: Set status on submodule PR
+      #   uses: actions/github-script@v6
+      #   with:
+      #     github-token: ${{ secrets.SUBMODULE_TOKEN }}
+      #     script: |
+      #       const state = '${{ steps.run-script.outcome }}' === 'success' ? 'success' : 'failure';
+      #       const description = state === 'success' ? 'Script ran successfully' : 'Script failed';
+      #       await github.rest.repos.createCommitStatus({
+      #         owner: '<submodule-owner>',
+      #         repo: '<submodule-repo>',
+      #         sha: '${{ github.event.client_payload.sha }}',
+      #         state: state,
+      #         context: 'main-repo-check',
+      #         description: description,
+      #         target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+      #       });
