@@ -42,7 +42,7 @@ jobs:
         run: |
           cd .\application\sub_modd_test
           .\example.bat
-
+          exit 1
         continue-on-error: true  # Allows the workflow to proceed even if the script fails
 
       - name: Set status on submodule PR
