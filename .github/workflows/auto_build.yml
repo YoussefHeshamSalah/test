@@ -22,14 +22,17 @@ jobs:
             $SubmoduleStatus = git submodule status
             $SubmodulePath = $SubmoduleStatus.Split(" ")[1]
 
+            echo $SubmoduleStatus.Split(" ")[0]
+            echo $SubmoduleStatus.Split(" ")[1]
+            echo $SubmoduleStatus.Split(" ")[2]
+            
             if ($SubmodulePath) {
                 Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
-                echo "SUBMODULE_PATH=$SubmodulePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
             } else {
                 Write-Error "Submodule '$SubmoduleName' not found!"
                 exit 1
             }
-            cd SUBMODULE_PATH # Replace with the actual path
+            cd $SubmodulePath
             git fetch origin
             git checkout ${{ github.event.client_payload.sha_num }}
 
