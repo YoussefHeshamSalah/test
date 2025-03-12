@@ -38,10 +38,24 @@ jobs:
             git checkout remotes/origin/${{ github.event.client_payload.branch_name }}
 
       - name: Run script
-        id: run-script
+        id: run-script-1
         run: |
+          echo %CD%
           cd .\application\sub_modd_test
           .\example.bat
+
+      - name: Run script 1
+        id: run-script-2
+        run: |
+          echo %CD%
+          cd .\application\sub_modd_test
+          .\example1.bat
+
+      - name: Run script 2
+        id: run-script-3
+        run: |
+          cd .\application\sub_modd_test
+          .\example1.bat
 
       - name: Set status on submodule PR
         if: always()  # Runs even if previous steps fail
@@ -49,8 +63,13 @@ jobs:
         with:
           github-token: ${{ secrets.YOUSSEF_RUNNER }}
           script: |
-            const state = '${{ steps.run-script.outcome }}' === 'success' ? 'success' : 'failure';
-            const description = state === 'success' ? 'Script ran successfully' : 'Script failed';
+            const outcomes = [
+              '${{ steps.run-script-1.outcome }}',
+              '${{ steps.run-script-2.outcome }}',
+              '${{ steps.run-script-3.outcome }}'
+            ];
+            const state = outcomes.every(outcome => outcome === 'success') ? 'success' : 'failure';
+            const description = state === 'success' ? 'All scripts ran successfully' : 'One or more scripts failed';
             await github.rest.repos.createCommitStatus({
               owner: 'YoussefHeshamSalah',
               repo: '${{ github.event.client_payload.repo_name }}',
