@@ -9,6 +9,11 @@ jobs:
   notify:
     runs-on: Main_Runner  # This label added to the "HP-ZBPG8-TEST2" machine for TWI_ORG_RUNNER runner
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.YOUSSEF_RUNNER }}
+    
       - name: Trigger update-submodules workflow
         run: |
           echo main
