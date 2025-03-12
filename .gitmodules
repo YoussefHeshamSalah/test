@@ -1,0 +1,3 @@
+[submodule "application/sub_modd_test"]
+	path = application/sub_modd_test
+	url = https://github.com/YoussefHeshamSalah/sub_modd_test.git
