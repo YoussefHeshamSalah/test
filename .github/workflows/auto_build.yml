@@ -46,6 +46,7 @@ jobs:
         # continue-on-error: true  # Allows the workflow to proceed even if the script fails
 
       - name: Set status on submodule PR
+        if: always()  # Runs even if previous steps fail
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.YOUSSEF_RUNNER }}
