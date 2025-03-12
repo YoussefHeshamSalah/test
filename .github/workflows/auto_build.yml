@@ -36,7 +36,8 @@ jobs:
       - name: Run script
         id: run-script
         run: |
-          ./test/application/sub_modd_test/example.bat  # Replace with the actual path
+          cd .\test\application\sub_modd_test
+          example.bat
         continue-on-error: true  # Allows the workflow to proceed even if the script fails
 
       - name: Set status on submodule PR
@@ -53,5 +54,5 @@ jobs:
               state: state,
               context: 'main-repo-check',
               description: description,
-              target_url: '${{ github.server_url }}/${{ github.event.client_payload.repo_name }}/actions/runs/${{ github.event.client_payload.run_id }}'
+              target_url: '${{ github.server_url }}/YoussefHeshamSalah/${{ github.event.client_payload.repo_name }}/actions/runs/${{ github.event.client_payload.run_id }}'
             });
