@@ -44,7 +44,7 @@ jobs:
           .\example.bat
 
       - name: Set status on submodule PR
-#        if: always()  # Runs even if previous steps fail
+        if: always()  # Runs even if previous steps fail
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.YOUSSEF_RUNNER }}
