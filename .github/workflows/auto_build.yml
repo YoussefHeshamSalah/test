@@ -4,12 +4,17 @@ on:
   repository_dispatch:
     types: [Auto_Build]  # trigger from submodules repositories
 
+
+concurrency:
+  group: auto_build
+  cancel-in-progress: true  # Cancel the previous run if a new one starts
+
 jobs:
   check:
     runs-on: Main_Runner  # Required for .bat script
     steps:
       - name: Checkout repository with submodules
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           clean: true
           submodules: recursive
@@ -31,7 +36,6 @@ jobs:
             cd $SubmodulePath
             git fetch origin
             git checkout ${{ github.event.client_payload.ref_name }}
-            echo ${{ github.server_url }}
 
       - name: Run script
         id: run-script
