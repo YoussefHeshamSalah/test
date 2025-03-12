@@ -1,9 +1,8 @@
 name: Notify Main Repository
 
 on:
-  push:
-    branches:
-      - main
+  repository_dispatch:
+    types: [Auto_Build]  # trigger from submodules repositories
 
 jobs:
   notify:
