@@ -42,8 +42,8 @@ jobs:
         run: |
           cd .\application\sub_modd_test
           .\example.bat
-          exit 1
-        continue-on-error: true  # Allows the workflow to proceed even if the script fails
+
+        # continue-on-error: true  # Allows the workflow to proceed even if the script fails
 
       - name: Set status on submodule PR
         uses: actions/github-script@v6
@@ -61,3 +61,4 @@ jobs:
               description: description,
               target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
             });
+
