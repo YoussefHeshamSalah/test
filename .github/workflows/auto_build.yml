@@ -30,7 +30,7 @@ jobs:
             }
             cd $SubmodulePath
             git fetch origin
-            git checkout ${{ github.event.client_payload.sha_num }}
+            git checkout ${{ github.event.client_payload.ref_name }}
             echo ${{ github.server_url }}
 
       - name: Run script
