@@ -20,11 +20,7 @@ jobs:
         run: |
             $SubmoduleName = "${{ github.event.client_payload.repo_name }}".Split("/")[1]
             $SubmoduleStatus = git submodule status
-            $SubmodulePath = $SubmoduleStatus.Split(" ")[1]
-
-            echo $SubmoduleStatus.Split(" ")[0]
-            echo $SubmoduleStatus.Split(" ")[1]
-            echo $SubmoduleStatus.Split(" ")[2]
+            $SubmodulePath = $SubmoduleStatus.Split(" ")[2]
             
             if ($SubmodulePath) {
                 Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
