@@ -55,5 +55,5 @@ jobs:
               state: state,
               context: 'main-repo-check',
               description: description,
-              target_url: '${{ github.server_url }}/YoussefHeshamSalah/${{ github.event.client_payload.repo_name }}/actions/runs/${{ github.run_id }}'
+              target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
             });
