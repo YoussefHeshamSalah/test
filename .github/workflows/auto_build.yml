@@ -36,7 +36,7 @@ jobs:
       - name: Run script
         id: run-script
         run: |
-          cd .\test\application\sub_modd_test
+          cd .\application\sub_modd_test
           example.bat
         continue-on-error: true  # Allows the workflow to proceed even if the script fails
 
