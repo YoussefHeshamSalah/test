@@ -31,6 +31,7 @@ jobs:
 
       - name: Update submodule to PR commit
         run: |
+            $SubmoduleName = ""
             if ("${{ github.event_name }}" -eq "repository_dispatch") {
               $SubmoduleName = "${{ github.event.client_payload.repo_name }}"
             } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
