@@ -31,33 +31,32 @@ jobs:
 
       - name: Update submodule to PR commit
         run: |
-            $SubmoduleName = ""
-            if ("${{ github.event_name }}" -eq "repository_dispatch") {
-              $SubmoduleName = "${{ github.event.client_payload.repo_name }}"
-            } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
-              $SubmoduleName = "${{ github.event.inputs.repo_name }}"
-            }
+              $SubmoduleName = ""
+              if ("${{ github.event_name }}" -eq "repository_dispatch") {
+                $SubmoduleName = "${{ github.event.client_payload.repo_name }}"
+              } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
+                $SubmoduleName = "${{ github.event.inputs.repo_name }}"
+              }
 
-            $SubmoduleStatus = git submodule status
-            $SubmodulePath = $SubmoduleStatus.Split(" ")[2]
+              $SubmoduleStatus = git submodule status
+              $SubmodulePath = $SubmoduleStatus.Split(" ")[2]
+              
+              if ($SubmodulePath) {
+                  Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
+              } else {
+                  Write-Error "Submodule '$SubmoduleName' not found!"
+                  exit 1
+              }
+
+              cd $SubmodulePath
+              git fetch origin
+
+              if ("${{ github.event_name }}" -eq "repository_dispatch") {
+                git checkout remotes/origin/${{ github.event.client_payload.branch_name }}
+              } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
+                git checkout remotes/origin/${{ github.event.inputs.branch_name }}
+              }
             
-            if ($SubmodulePath) {
-                Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
-            } else {
-                Write-Error "Submodule '$SubmoduleName' not found!"
-                exit 1
-            }
-
-            cd $SubmodulePath
-            git fetch origin
-
-            if ("${{ github.event_name }}" -eq "repository_dispatch") {
-              git checkout remotes/origin/${{ github.event.client_payload.branch_name }}
-            } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
-              git checkout remotes/origin/${{ github.event.inputs.branch_name }}
-            }
-            
-
   Impbrands_Applications:
     needs: [Checkout_Submodule]
     runs-on: Main_Runner  # Required for .bat script
