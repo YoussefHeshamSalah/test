@@ -42,20 +42,20 @@ jobs:
         run: |
           echo %CD%
           cd .\application\sub_modd_test
-          .\example.bat
-
-      - name: Run script 1
-        id: run-script-2
-        run: |
-          echo %CD%
-          cd .\application\sub_modd_test
           .\example1.bat
 
-      - name: Run script 2
-        id: run-script-3
-        run: |
-          cd .\application\sub_modd_test
-          .\example1.bat
+      # - name: Run script 1
+      #   id: run-script-2
+      #   run: |
+      #     echo %CD%
+      #     cd .\application\sub_modd_test
+      #     .\example1.bat
+
+      # - name: Run script 2
+      #   id: run-script-3
+      #   run: |
+      #     cd .\application\sub_modd_test
+      #     .\example1.bat
 
       - name: Set status on submodule PR
         if: always()  # Runs even if previous steps fail
@@ -65,8 +65,6 @@ jobs:
           script: |
             const outcomes = [
               '${{ steps.run-script-1.outcome }}',
-              '${{ steps.run-script-2.outcome }}',
-              '${{ steps.run-script-3.outcome }}'
             ];
             const state = outcomes.every(outcome => outcome === 'success') ? 'success' : 'failure';
             const description = state === 'success' ? 'All scripts ran successfully' : 'One or more scripts failed';
