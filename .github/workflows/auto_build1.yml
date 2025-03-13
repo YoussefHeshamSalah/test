@@ -45,7 +45,7 @@ jobs:
       run: |
         echo %cd%
         cd .\application\sub_modd_test
-        .\example.bat
+        .\example1.bat
   # script2:
   #   needs: [check]
   #   runs-on: Main_Runner  # Required for .bat script
