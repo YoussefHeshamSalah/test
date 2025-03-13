@@ -4,6 +4,14 @@ on:
   repository_dispatch:
     types: [Auto_Build]  # trigger from submodules repositories
 
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Commit SHA to check out in the submodule'
+        required: true
+      branch:
+        description: 'Branch to check out in the submodule'
+        required: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
