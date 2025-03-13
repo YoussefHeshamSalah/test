@@ -66,7 +66,8 @@ jobs:
         cd .\application\sub_modd_test
         .\example1.bat
   status:
-    needs: [script3, script2, script1, check]
+    needs: [script1, script2, script3]
+    if: always()
     runs-on: Main_Runner  # Required for .bat script
     steps:
     - name: Set status on submodule PR
