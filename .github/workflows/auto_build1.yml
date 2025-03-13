@@ -46,27 +46,27 @@ jobs:
         echo %cd%
         cd .\application\sub_modd_test
         .\example.bat
-  script2:
-    needs: [check]
-    runs-on: Main_Runner  # Required for .bat script
-    steps:
-    - name: Run script 1
-      id: run-script-2
-      run: |
-        echo %cd%
-        cd .\application\sub_modd_test
-        .\example.bat
-  script3:
-    needs: [check]
-    runs-on: Main_Runner  # Required for .bat script
-    steps:
-    - name: Run script 2
-      id: run-script-3
-      run: |
-        cd .\application\sub_modd_test
-        .\example.bat
+  # script2:
+  #   needs: [check]
+  #   runs-on: Main_Runner  # Required for .bat script
+  #   steps:
+  #   - name: Run script 1
+  #     id: run-script-2
+  #     run: |
+  #       echo %cd%
+  #       cd .\application\sub_modd_test
+  #       .\example.bat
+  # script3:
+  #   needs: [check]
+  #   runs-on: Main_Runner  # Required for .bat script
+  #   steps:
+  #   - name: Run script 2
+  #     id: run-script-3
+  #     run: |
+  #       cd .\application\sub_modd_test
+  #       .\example.bat
   status:
-    needs: [script1, script2, script3]
+    needs: [script1]
     if: always()
     runs-on: Main_Runner  # Required for .bat script
     steps:
@@ -77,8 +77,6 @@ jobs:
         script: |
           const outcomes = [
             '${{ needs.script1.result }}',
-            '${{ needs.script2.result }}',
-            '${{ needs.script3.result }}'
           ];
           const state = outcomes.every(outcome => outcome === 'success') ? 'success' : 'failure';
           const description = state === 'success' ? 'All scripts ran successfully' : 'One or more scripts failed';
