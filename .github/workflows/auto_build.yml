@@ -2,7 +2,7 @@ name: Notify Main Repository
 
 on:
   repository_dispatch:
-    types: [Auto_Build]  # trigger from submodules repositories
+    types: [Auto_Build1]  # trigger from submodules repositories
 
 
 concurrency:
