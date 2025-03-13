@@ -77,8 +77,8 @@ jobs:
         script: |
           const outcomes = [
             '${{ needs.script1.result }}',
-            '${{ needs.script1.result }}',
-            '${{ needs.script1.result }}'
+            '${{ needs.script2.result }}',
+            '${{ needs.script3.result }}'
           ];
           const state = outcomes.every(outcome => outcome === 'success') ? 'success' : 'failure';
           const description = state === 'success' ? 'All scripts ran successfully' : 'One or more scripts failed';
