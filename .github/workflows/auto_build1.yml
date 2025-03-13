@@ -55,7 +55,7 @@ jobs:
       run: |
         echo %cd%
         cd .\application\sub_modd_test
-        .\example1.bat
+        .\example.bat
   script3:
     needs: [check]
     runs-on: Main_Runner  # Required for .bat script
@@ -64,7 +64,7 @@ jobs:
       id: run-script-3
       run: |
         cd .\application\sub_modd_test
-        .\example1.bat
+        .\example.bat
   status:
     needs: [script1, script2, script3]
     if: always()
