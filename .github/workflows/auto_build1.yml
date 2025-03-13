@@ -67,7 +67,6 @@ jobs:
   #       .\example1.bat
   status:
     needs: [script1]
-    if: always()
     runs-on: Main_Runner  # Required for .bat script
     steps:
     - name: Set status on submodule PR
