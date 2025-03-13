@@ -2,7 +2,7 @@ name: Notify Main Repository
 
 on:
   repository_dispatch:
-    types: [Auto_Build1]  # trigger from submodules repositories
+    types: [Auto_Build]  # trigger from submodules repositories
 
 
 concurrency:
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  Checkout_Submodule:
     runs-on: Main_Runner  # Required for .bat script
     steps:
       - name: Checkout repository with submodules
@@ -36,37 +36,19 @@ jobs:
             cd $SubmodulePath
             git fetch origin
             git checkout remotes/origin/${{ github.event.client_payload.branch_name }}
-  script1:
-    needs: [check]
+
+  Impbrands_Applications:
+    needs: [Checkout_Submodule]
     runs-on: Main_Runner  # Required for .bat script
     steps:
-    - name: Run script
-      id: run-script-1
+    - name: Run Impbrands-Applications
       run: |
         echo %cd%
         cd .\application\sub_modd_test
         .\example1.bat
-  # script2:
-  #   needs: [check]
-  #   runs-on: Main_Runner  # Required for .bat script
-  #   steps:
-  #   - name: Run script 1
-  #     id: run-script-2
-  #     run: |
-  #       echo %cd%
-  #       cd .\application\sub_modd_test
-  #       .\example.bat
-  # script3:
-  #   needs: [check]
-  #   runs-on: Main_Runner  # Required for .bat script
-  #   steps:
-  #   - name: Run script 2
-  #     id: run-script-3
-  #     run: |
-  #       cd .\application\sub_modd_test
-  #       .\example.bat
-  status:
-    needs: [script1]
+
+  Run_Status:
+    needs: [Impbrands_Applications]
     if: always()
     runs-on: Main_Runner  # Required for .bat script
     steps:
@@ -76,7 +58,7 @@ jobs:
         github-token: ${{ secrets.YOUSSEF_RUNNER }}
         script: |
           const outcomes = [
-            '${{ needs.script1.result }}',
+            '${{ needs.Impbrands_Applications.result }}',
           ];
           const state = outcomes.every(outcome => outcome === 'success') ? 'success' : 'failure';
           const description = state === 'success' ? 'All scripts ran successfully' : 'One or more scripts failed';
