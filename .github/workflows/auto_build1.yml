@@ -6,8 +6,8 @@ on:
 
 
 concurrency:
-  group: auto_build
-  cancel-in-progress: true  # Cancel the previous run if a new one starts
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
