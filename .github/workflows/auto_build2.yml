@@ -50,7 +50,7 @@ jobs:
 
               cd $SubmodulePath
               git fetch origin
-              
+
               $BranchName = ""
               if ("${{ github.event_name }}" -eq "repository_dispatch") {
                 $BranchName = "${{ github.event.client_payload.branch_name }}"
@@ -60,11 +60,10 @@ jobs:
 
               if ($(git branch --list $BranchName)) {
                 git checkout $BranchName
+                git pull origin $BranchName
               } else {
                 git checkout -b $BranchName origin/$BranchName
               }
-
-              git pull origin $BranchName
             
   Impbrands_Applications:
     needs: [Checkout_Submodule]
