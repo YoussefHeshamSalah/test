@@ -57,6 +57,7 @@ jobs:
                 $BranchName = "${{ github.event.inputs.branch_name }}"
               }
 
+              git fetch origin
               git checkout -b $BranchName origin/$BranchName
               git pull origin $BranchName
             
