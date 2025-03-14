@@ -52,9 +52,9 @@ jobs:
               git fetch origin
 
               if ("${{ github.event_name }}" -eq "repository_dispatch") {
-                git checkout remotes/origin/${{ github.event.client_payload.branch_name }}
+                git checkout -b branch_name --track origin/branch_name/${{ github.event.client_payload.branch_name }}
               } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
-                git checkout remotes/origin/${{ github.event.inputs.branch_name }}
+                git checkout -b branch_name --track origin/branch_name/${{ github.event.inputs.branch_name }}
               }
             
   Impbrands_Applications:
