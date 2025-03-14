@@ -29,7 +29,7 @@ jobs:
           token: ${{ secrets.YOUSSEF_RUNNER }}
           fetch-depth: 0
 
-      - name: Update submodule to PR commit
+      - name: Update submodule to PR Branch
         run: |
               $SubmoduleName = ""
               if ("${{ github.event_name }}" -eq "repository_dispatch") {
@@ -49,13 +49,16 @@ jobs:
               }
 
               cd $SubmodulePath
-              git fetch origin
 
+              $BranchName = ""
               if ("${{ github.event_name }}" -eq "repository_dispatch") {
-                git checkout -b branch_name --track origin/${{ github.event.client_payload.branch_name }}
+                $BranchName = "${{ github.event.client_payload.branch_name }}"
               } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
-                git checkout -b branch_name --track origin/${{ github.event.inputs.branch_name }}
+                $BranchName = "${{ github.event.inputs.branch_name }}"
               }
+
+              git checkout -b $BranchName origin/$BranchName
+              git pull origin $BranchName
             
   Impbrands_Applications:
     needs: [Checkout_Submodule]
