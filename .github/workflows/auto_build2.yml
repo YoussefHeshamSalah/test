@@ -29,7 +29,7 @@ jobs:
           token: ${{ secrets.YOUSSEF_RUNNER }}
           fetch-depth: 0
 
-      - name: Update submodule to PR Branch
+      - name: Update submodule to PR branch
         run: |
               $SubmoduleName = ""
               if ("${{ github.event_name }}" -eq "repository_dispatch") {
@@ -38,15 +38,14 @@ jobs:
                 $SubmoduleName = "${{ github.event.inputs.repo_name }}"
               }
 
-              $SubmoduleStatus = git submodule status
-              $SubmodulePath = $SubmoduleStatus.Split(" ")[2]
-              
-              if ($SubmodulePath) {
-                  Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
-              } else {
+              $SubmodulePath = git config --file .gitmodules --get-regexp path | Where-Object {$_ -match $SubmoduleName} | ForEach-Object { ($_ -split " ")[1] }
+
+              if (-not $SubmodulePath) {
                   Write-Error "Submodule '$SubmoduleName' not found!"
                   exit 1
               }
+              
+              Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
 
               cd $SubmodulePath
               git fetch origin
