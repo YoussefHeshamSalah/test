@@ -35,7 +35,7 @@ jobs:
             }
             cd $SubmodulePath
             git fetch origin
-            git checkout remotes/origin/${{ github.event.client_payload.branch_name }}
+            git checkout -b branch_name --track origin/branch_name/${{ github.event.client_payload.branch_name }}
 
       - name: Run script
         id: run-script-1
