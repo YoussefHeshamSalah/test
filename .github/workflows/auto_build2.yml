@@ -40,6 +40,7 @@ jobs:
                 $SubmoduleName = "${{ github.event.inputs.repo_name }}"
               }
 
+              # get submodule path
               $SubmodulePath = git config --file .gitmodules --get-regexp path | Where-Object {$_ -match $SubmoduleName} | ForEach-Object { ($_ -split " ")[1] }
 
               if (-not $SubmodulePath) {
