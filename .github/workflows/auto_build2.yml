@@ -97,7 +97,7 @@ jobs:
             repo: '${{ github.event.client_payload.repo_name }}',
             sha: '${{ github.event.client_payload.sha_num }}',
             state: state,
-            context: 'main-repo-check',
+            context: 'auto-build-status',
             description: description,
             target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
           });
