@@ -23,6 +23,22 @@ jobs:
   Checkout_Submodule:
     runs-on: Main_Runner  # Required for .bat script
     steps:
+      # This step sets the state to "pending" to indicate that the auto-build process is in progress.  
+      # Once the build completes, the status will automatically update to "success" or "failure" based on the outcome.
+      - name: Set status on submodule PR                          
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.YOUSSEF_RUNNER }}
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: 'YoussefHeshamSalah',
+              repo: '${{ github.event.client_payload.repo_name }}',
+              sha: '${{ github.event.client_payload.sha_num }}',
+              state: "pending",
+              context: 'auto-build-status',
+              target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });
+
       - name: Checkout repository with submodules
         uses: actions/checkout@v4
         with:
