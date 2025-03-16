@@ -115,6 +115,5 @@ jobs:
             state: state,
             context: 'auto-build-status',
             description: description,
-            target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
           });
 
