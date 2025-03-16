@@ -13,6 +13,8 @@ on:
         description: 'Branch to check out in the submodule'
         required: true
 
+run-name: ${{ github.event.client_payload.pull_request_name }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
