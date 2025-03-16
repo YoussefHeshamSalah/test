@@ -1,0 +1,80 @@
+name: Notify Main Repository
+
+on:
+  repository_dispatch:
+    types: [Auto_Build1]  # trigger from submodules repositories
+
+
+concurrency:
+  group: auto_build
+  cancel-in-progress: true  # Cancel the previous run if a new one starts
+
+jobs:
+  check:
+    runs-on: Main_Runner  # Required for .bat script
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          submodules: recursive
+          token: ${{ secrets.YOUSSEF_RUNNER }}
+          fetch-depth: 0
+
+      - name: Update submodule to PR commit
+        run: |
+            $SubmoduleName = "${{ github.event.client_payload.repo_name }}"
+            $SubmoduleStatus = git submodule status
+            $SubmodulePath = $SubmoduleStatus.Split(" ")[2]
+            
+            if ($SubmodulePath) {
+                Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
+            } else {
+                Write-Error "Submodule '$SubmoduleName' not found!"
+                exit 1
+            }
+            cd $SubmodulePath
+            git fetch origin
+            git checkout -b branch_name --track origin/branch_name/${{ github.event.client_payload.branch_name }}
+
+      - name: Run script
+        id: run-script-1
+        run: |
+          echo %CD%
+          cd .\application\sub_modd_test
+          .\example1.bat
+
+      # - name: Run script 1
+      #   id: run-script-2
+      #   run: |
+      #     echo %CD%
+      #     cd .\application\sub_modd_test
+      #     .\example1.bat
+
+      # - name: Run script 2
+      #   id: run-script-3
+      #   run: |
+      #     cd .\application\sub_modd_test
+      #     .\example1.bat
+
+      - name: Set status on submodule PR
+        if: always()  # Runs even if previous steps fail
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.YOUSSEF_RUNNER }}
+          script: |
+            const outcomes = [
+              '${{ steps.run-script-1.outcome }}',
+            ];
+            const state = outcomes.every(outcome => outcome === 'success') ? 'success' : 'failure';
+            const description = state === 'success' ? 'All scripts ran successfully' : 'One or more scripts failed';
+            await github.rest.repos.createCommitStatus({
+              owner: 'YoussefHeshamSalah',
+              repo: '${{ github.event.client_payload.repo_name }}',
+              sha: '${{ github.event.client_payload.sha_num }}',
+              state: state,
+              context: 'main-repo-check',
+              description: description,
+              target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });
+
