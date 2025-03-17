@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  Checkout_Submodule:
+  PR_Status:
     runs-on: Main_Runner  # Required for .bat script
     steps:
       # This step sets the state to "pending" to indicate that the auto-build process is in progress.  
@@ -41,59 +41,27 @@ jobs:
               target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
             });
 
-      - name: Checkout repository with submodules
-        uses: actions/checkout@v4
-        with:
-          clean: true
-          submodules: recursive
-          token: ${{ secrets.YOUSSEF_RUNNER }}
-          fetch-depth: 0
-
-      - name: Update submodule to PR branch
-        run: |
-              $SubmoduleName = ""
-              if ("${{ github.event_name }}" -eq "repository_dispatch") {
-                $SubmoduleName = "${{ github.event.client_payload.repo_name }}"
-              } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
-                $SubmoduleName = "${{ github.event.inputs.repo_name }}"
-              }
-
-              # get submodule path
-              $SubmodulePath = git config --file .gitmodules --get-regexp path | Where-Object {$_ -match $SubmoduleName} | ForEach-Object { ($_ -split " ")[1] }
-
-              if (-not $SubmodulePath) {
-                  Write-Error "Submodule '$SubmoduleName' not found!"
-                  exit 1
-              }
-              
-              Write-Output "Submodule '$SubmoduleName' is located at: $SubmodulePath"
-
-              cd $SubmodulePath
-              git fetch origin
-
-              $BranchName = ""
-              if ("${{ github.event_name }}" -eq "repository_dispatch") {
-                $BranchName = "${{ github.event.client_payload.branch_name }}"
-              } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
-                $BranchName = "${{ github.event.inputs.branch_name }}"
-              }
-
-              if ($(git branch --list $BranchName)) {
-                git checkout $BranchName
-                git pull origin $BranchName
-              } else {
-                git checkout -b $BranchName origin/$BranchName
-              }
-            
   Impbrands_Applications:
-    needs: [Checkout_Submodule]
+    needs: [PR_Status]
     runs-on: Main_Runner  # Required for .bat script
     steps:
+    - uses: actions/checkout@v4
+      with:
+        clean: true
+        submodules: recursive
+        token: ${{ secrets.YOUSSEF_RUNNER }}
+        fetch-depth: 0
+
+    - name: Update submodule to PR branch
+      run: |
+            cd .\application
+            .\update_submodule.ps1 -EventName "${{ github.event_name }}" -RepoName "${{ github.event.inputs.repo_name }}" -BranchName "${{ github.event.inputs.branch_name }}"
+
     - name: Run Impbrands-Applications
       run: |
-        echo %cd%
-        cd .\application\sub_modd_test
-        .\example1.bat
+            echo %cd%
+            cd .\application\sub_modd_test
+            .\example1.bat
 
   Run_Status:
     needs: [Impbrands_Applications]
