@@ -54,8 +54,7 @@ jobs:
 
     - name: Update submodule to PR branch
       run: |
-            cd .\application
-            .\update_submodule.ps1 -SubmoduleName "${{ github.event.client_payload.repo_name || github.event.inputs.repo_name }}" -BranchName "${{ github.event.client_payload.branch_name || github.event.inputs.branch_name }}"
+            .\application\update_submodule.ps1 -SubmoduleName "${{ github.event.client_payload.repo_name || github.event.inputs.repo_name }}" -BranchName "${{ github.event.client_payload.branch_name || github.event.inputs.branch_name }}"
 
     - name: Run Impbrands-Applications
       run: |
