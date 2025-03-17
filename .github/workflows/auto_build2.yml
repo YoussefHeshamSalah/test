@@ -120,3 +120,12 @@ jobs:
             target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
           });
 
+          if(state == 'failure'){
+            await github.rest.issues.createComment({
+              owner: 'YoussefHeshamSalah',
+              repo: '${{ github.event.client_payload.repo_name }}',
+              issue_number: ${{ github.event.client_payload.pull_request_num }},
+              body: Auto Build Fails, Can be reviewed from (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            });
+          }
+
