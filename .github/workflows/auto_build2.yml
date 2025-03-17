@@ -16,7 +16,7 @@ on:
 run-name: ${{ github.event.client_payload.pull_request_name || 'Manually Trigger Auto Build' }}
 
 concurrency:
-  group: ${{ github.event_name }}-${{ github.event.client_payload.repo_name || github.event.inputs.repo_name}}-${{ github.workflow }}-${{ github.event.client_payload.branch_name || github.event.inputs.branch_name}}
+  group: ${{ github.event_name }}-${{ github.event.client_payload.repo_name || github.event.inputs.repo_name }}-${{ github.workflow }}-${{ github.event.client_payload.branch_name || github.event.inputs.branch_name }}
   cancel-in-progress: true
 
 jobs:
@@ -55,7 +55,7 @@ jobs:
     - name: Update submodule to PR branch
       run: |
             cd .\application
-            .\update_submodule.ps1 -EventName "${{ github.event_name }}" -RepoName "${{ github.event.inputs.repo_name }}" -BranchName "${{ github.event.inputs.branch_name }}"
+            .\update_submodule.ps1 -SubmoduleName "${{ github.event.client_payload.repo_name || github.event.inputs.repo_name }}" -BranchName "${{ github.event.client_payload.branch_name || github.event.inputs.branch_name }}"
 
     - name: Run Impbrands-Applications
       run: |
