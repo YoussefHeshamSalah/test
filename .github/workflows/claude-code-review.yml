@@ -73,7 +73,7 @@ jobs:
           # profile are blocked as a second line of defence.
           claude_args: |
             --allowedTools "Read(./**),Grep,Glob,Task,TodoWrite,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),mcp__github_inline_comment__create_inline_comment"
-            --disallowedTools "Read(./.git/**),Read(~/.claude/.credentials.json),Read(~/.claude.json),Read(~/.ssh/**),Read(~/.config/gh/**),Read(~/.git-credentials),Read(~/.gitconfig),Read(~/AppData/Roaming/**),Edit,Write,NotebookEdit,WebFetch,WebSearch,Bash(git push:*),Bash(gh auth:*),Bash(gh api:*),Bash(gh pr comment:*),Bash(gh pr review:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh repo:*)"
+            --disallowedTools "Read(./.git/**),Read(~/.claude/.credentials.json),Read(~/.claude.json),Read(~/.ssh/**),Read(~/.config/gh/**),Read(~/.git-credentials),Read(~/.gitconfig),Read(~/AppData/Roaming/**),Edit,Write,NotebookEdit,WebFetch,WebSearch,Bash(git push:*),Bash(gh auth:*),Bash(gh api:*),Bash(gh pr review:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh repo:*)"
 
           show_full_output: true
 
