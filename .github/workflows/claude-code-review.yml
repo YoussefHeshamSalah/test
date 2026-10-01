@@ -28,7 +28,6 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-      id-token: write
 
     steps:
       - name: Checkout repository
@@ -40,7 +39,7 @@ jobs:
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
-          # github_token: ${{ github.token }}
+          github_token: ${{ github.token }}
           
           # Posts as github-actions[bot]; skips the Claude App token exchange and its workflow validation
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -51,15 +50,55 @@ jobs:
           
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
-          prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
 
-          # Read code and comment on the PR only; no file edits, no web access, no pushing
           claude_args: |
-            --allowedTools "Read,Grep,Glob,Task,TodoWrite,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),mcp__github_inline_comment__create_inline_comment"
-            --disallowedTools "Edit,Write,NotebookEdit,WebFetch,WebSearch,Bash(git push:*),Bash(gh api:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh repo:*)"
+            --append-system-prompt "When the code review is finished, return its final results in the structured output. Set skipped to true if the review stopped early (closed, draft, trivial, or already reviewed PR). Put the overall result in summary. Add one entry to comments for each issue in the final filtered list, with path (file path as in the diff), line (line number in the new version of the file, within the diff) and body (the issue description and suggested fix). Never post comments to GitHub yourself."
+            --json-schema '{"type":"object","properties":{"skipped":{"type":"boolean"},"summary":{"type":"string"},"comments":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"line":{"type":"integer"},"body":{"type":"string"}},"required":["path","line","body"]}}},"required":["skipped","summary","comments"]}'
+            --allowedTools "Read,Grep,Glob,Task,TodoWrite,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
+            --disallowedTools "Edit,Write,NotebookEdit,WebFetch,WebSearch,mcp__github_inline_comment__create_inline_comment,Bash(git push:*),Bash(gh api:*),Bash(gh pr comment:*),Bash(gh pr review:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh repo:*)"
 
           # Set to true temporarily to debug a failed run (the log can include repository content)
           show_full_output: true
 
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+      # Step 2: a fixed script (not Claude) posts all findings as ONE review
+      - name: Post review
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          REVIEW_JSON: ${{ steps.claude-review.outputs.structured_output }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:REVIEW_JSON)) {
+            Write-Error "Claude returned no structured output."
+            exit 1
+          }
+          $r = $env:REVIEW_JSON | ConvertFrom-Json
+          if ($r.skipped -eq $true) {
+            Write-Host "Review skipped by the plugin: $($r.summary)"
+            exit 0
+          }
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+          $file = Join-Path $env:RUNNER_TEMP "review.json"
+          $url  = "repos/$env:REPO/pulls/$env:PR/reviews"
+
+          $comments = @($r.comments | Where-Object { $_ } | ForEach-Object {
+            @{ path = $_.path; line = [int]$_.line; side = "RIGHT"; body = $_.body }
+          })
+
+          $review = @{ event = "COMMENT"; body = "## Claude code review`n`n$($r.summary)" }
+          if ($comments.Count -gt 0) { $review.comments = $comments }
+
+          [System.IO.File]::WriteAllText($file, ($review | ConvertTo-Json -Depth 6), $utf8)
+          gh api --method POST $url --input $file
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+
+          # Fallback: a line was outside the diff, so post everything in the review body instead
+          Write-Warning "Inline review failed; posting findings in the review body instead."
+          $list = ($comments | ForEach-Object { "- **$($_.path):$($_.line)**: $($_.body)" }) -join "`n`n"
+          $fallback = @{ event = "COMMENT"; body = "## Claude code review`n`n$($r.summary)`n`n$list" }
+          [System.IO.File]::WriteAllText($file, ($fallback | ConvertTo-Json -Depth 6), $utf8)
+          gh api --method POST $url --input $file
+          if ($LASTEXITCODE -ne 0) { exit 1 }
