@@ -64,7 +64,7 @@ jobs:
       # Step 2: a fixed script (not Claude) posts all findings as ONE review
       - name: Post review
         if: success()
-        shell: pwsh
+        shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
