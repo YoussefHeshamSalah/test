@@ -60,12 +60,5 @@ jobs:
           show_full_output: true
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-Footer
-© 2026 GitHub, Inc.
-Footer navigation
-Terms
-Privacy
-Security
-Status
+          # or https://code.claude.com/docs/en/cli-reference for available options 
 Commun
