@@ -25,8 +25,8 @@ jobs:
     # github_token below uses this job's GITHUB_TOKEN, so it needs write access to post the review
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
+      pull-requests: write
+      issues: write
       id-token: write
 
     steps:
