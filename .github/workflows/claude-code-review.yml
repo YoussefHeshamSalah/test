@@ -32,7 +32,7 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR","CONTRIBUTOR"]'), github.event.pull_request.author_association)
 
-    runs-on: [self-hosted, Windows]
+    runs-on: self-hosted
     timeout-minutes: 30
 
     # Job-level, so a skipped run (e.g. a draft) never cancels a review in progress
