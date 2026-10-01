@@ -26,8 +26,8 @@ jobs:
     # github_token below uses this job's GITHUB_TOKEN, so it needs write access to post the review
     permissions:
       contents: read
-      pull-requests: write
-      issues: write
+      pull-requests: read
+      issues: read
       id-token: write
 
     steps:
@@ -46,7 +46,7 @@ jobs:
 
           # Windows runner: use the pre-installed Claude Code (runner account: twi.test1)
           path_to_claude_code_executable: "C:/Users/YoussefHesham/.local/bin/claude.exe"
-          path_to_bun_executable: "C:/Users/YoussefHesham/.bun/bin/bun.exe"
+          # path_to_bun_executable: "C:/Users/YoussefHesham/.bun/bin/bun.exe"
           
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
