@@ -58,10 +58,3 @@ jobs:
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-
-      - name: Show Claude execution log
-        if: always()
-        shell: pwsh
-        run: |
-          $log = Join-Path $env:RUNNER_TEMP "claude-execution-output.json"
-          if (Test-Path $log) { Get-Content $log } else { Write-Host "No execution log found at $log" }
