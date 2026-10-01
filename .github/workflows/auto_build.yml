@@ -3,6 +3,9 @@ name: Notify Main Repository
 on:
   repository_dispatch:
     types: [Auto_Build1]  # trigger from submodules repositories
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
 
 
 concurrency:
