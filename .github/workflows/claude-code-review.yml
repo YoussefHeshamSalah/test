@@ -2,312 +2,70 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
-    # Runs on every push (synchronize). The code-review plugin skips PRs it has
-    # already reviewed, so later pushes usually end early; remove "synchronize"
-    # to save those runs.
+    types: [opened, synchronize, ready_for_review, reopened]
     # Optional: Only run on specific file changes
     # paths:
     #   - "src/**/*.c"
     #   - "src/**/*.h"
 
-# Nothing is granted by default; the job below asks for the minimum it needs.
-permissions: {}
+# Cancel an in-progress review when new commits are pushed to the same PR
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   claude-review:
-    # Self-hosted runner + secrets: same-repo branches only, trusted authors only,
-    # no drafts, no Dependabot (it gets no Actions secrets, so the run would fail).
-    # CONTRIBUTOR is allowed because org members with private membership show up as it.
+    # Self-hosted runner: never run on PRs from forks, and skip drafts
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.draft == false &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR","CONTRIBUTOR"]'), github.event.pull_request.author_association)
-
+      github.event.pull_request.draft == false
     runs-on: self-hosted
     timeout-minutes: 30
 
-    # Job-level, so a skipped run (e.g. a draft) never cancels a review in progress
-    concurrency:
-      group: claude-review-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
-
-    # contents: read for the checkout; pull-requests: write to post the review;
-    # issues: read so the plugin's gh issue view/list context lookups work.
+    # github_token below uses this job's GITHUB_TOKEN, so it needs write access to post the review
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: read
       issues: read
+      id-token: write
 
     steps:
-      - name: Checkout PR head (read-only, never executed)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
-          persist-credentials: false
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
-          # Automatic per-job token: posts as github-actions[bot], limited by the
-          # permissions above, and skips the Claude App token exchange and its
-          # workflow validation
-          github_token: ${{ github.token }}
 
+          github_token: ${{ github.token }}
+          # Posts as github-actions[bot]; skips the Claude App token exchange and its workflow validation
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Claude Code on the runner. The default is currently in YoussefHesham's
-          # profile; once a dedicated runner service account exists, install it there
-          # and set the repo variable CLAUDE_CODE_EXECUTABLE to that path.
-          path_to_claude_code_executable: ${{ vars.CLAUDE_CODE_EXECUTABLE || 'C:/Users/YoussefHesham/.local/bin/claude.exe' }}
-
+          # Windows runner: use the pre-installed Claude Code (runner account: twi.test1)
+          path_to_claude_code_executable: "C:/Users/YoussefHesham/.local/bin/claude.exe"
+          # path_to_bun_executable: "C:/Users/YoussefHesham/.bun/bin/bun.exe"
+          
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
 
-          # Reads are limited to the checkout. .git/ is blocked because the action
-          # writes a GitHub token into .git/config. Credential files in the runner
-          # profile are blocked as a second line of defence.
+          # Read code and comment on the PR only; no file edits, no web access, no pushing
           claude_args: |
-            --allowedTools "Read(./**),Grep,Glob,Task,TodoWrite,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),mcp__github_inline_comment__create_inline_comment"
-            --disallowedTools "Read(./.git/**),Read(~/.claude/.credentials.json),Read(~/.claude.json),Read(~/.ssh/**),Read(~/.config/gh/**),Read(~/.git-credentials),Read(~/.gitconfig),Read(~/AppData/Roaming/**),Edit,Write,NotebookEdit,WebFetch,WebSearch,Bash(git push:*),Bash(gh auth:*),Bash(gh api:*),Bash(gh pr review:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh repo:*)"
-
+            --allowedTools "Read,Grep,Glob,Task,TodoWrite,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),mcp__github_inline_comment__create_inline_comment"
+            --disallowedTools "Edit,Write,NotebookEdit,WebFetch,WebSearch,Bash(git push:*),Bash(gh api:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh repo:*)"
+          # Set to true temporarily to debug a failed run (the log can include repository content)
           show_full_output: true
 
-      # Step 2: a fixed script (not Claude) posts all findings as ONE review.
-      # It reads Claude's result from the execution file (a short path) instead of
-      # an environment variable, which Windows caps at 32,767 characters.
-      # Claude-written text is never printed to the log: lines starting with "::"
-      # would be read by GitHub Actions as workflow commands.
-      # - name: Post review
-      #   if: always() && steps.claude-review.outcome != 'skipped'
-      #   shell: powershell
-      #   env:
-      #     GH_TOKEN: ${{ github.token }}
-      #     REPO: ${{ github.repository }}
-      #     PR: ${{ github.event.pull_request.number }}
-      #     HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      #     CLAUDE_OUTCOME: ${{ steps.claude-review.outcome }}
-      #     EXEC_FILE: ${{ steps.claude-review.outputs.execution_file }}
-      #     RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      #   run: |
-      #     $ErrorActionPreference = 'Stop'
-      #     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-      #     Add-Type -AssemblyName System.Web.Extensions
-      #     $json = New-Object System.Web.Script.Serialization.JavaScriptSerializer
-      #     $json.MaxJsonLength = [int]::MaxValue
-      #     $json.RecursionLimit = 1000
-      #     $utf8 = New-Object System.Text.UTF8Encoding($false)
-      #     $api = "$env:GITHUB_API_URL/repos/$env:REPO"
-      #     $headers = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
-      #     $maxBody = 60000
-
-      #     function Get-Field($d, [string]$k) {
-      #       if ($d -is [System.Collections.Generic.Dictionary[string,object]] -and $d.ContainsKey($k)) { return $d[$k] }
-      #       return $null
-      #     }
-      #     function New-Map { return New-Object 'System.Collections.Generic.Dictionary[string,object]' }
-      #     function Get-StatusCode($err) {
-      #       try { return [int]$err.Exception.Response.StatusCode } catch { return 0 }
-      #     }
-      #     function Invoke-GitHub([string]$Method, [string]$Path, $Body) {
-      #       $p = @{ Method = $Method; Uri = "$api/$Path"; Headers = $headers; UserAgent = 'claude-review-poster'; UseBasicParsing = $true }
-      #       if ($null -ne $Body) {
-      #         $p.ContentType = 'application/json; charset=utf-8'
-      #         $p.Body = $utf8.GetBytes($json.Serialize($Body))
-      #       }
-      #       $resp = Invoke-WebRequest @p
-      #       $text = $utf8.GetString($resp.RawContentStream.ToArray())
-      #       if ([string]::IsNullOrWhiteSpace($text)) { return $null }
-      #       return $json.DeserializeObject($text)
-      #     }
-      #     function Limit-Text([string]$s) {
-      #       if ($s.Length -le $maxBody) { return $s }
-      #       return $s.Substring(0, $maxBody) + "`n`n_(truncated; see the [workflow run]($env:RUN_URL))_"
-      #     }
-      #     function Send-Notice([string]$msg) {
-      #       $r = New-Map; $r['event'] = 'COMMENT'; $r['commit_id'] = $env:HEAD_SHA
-      #       $r['body'] = "## Claude code review`n`n$msg See the [workflow run]($env:RUN_URL)."
-      #       try { [void](Invoke-GitHub 'POST' "pulls/$env:PR/reviews" $r) } catch { Write-Warning "Could not post notice (HTTP $(Get-StatusCode $_))." }
-      #     }
-
-      #     # Superseded by a newer run (concurrency) or timed out: nothing to post
-      #     if ($env:CLAUDE_OUTCOME -eq 'cancelled') { Write-Host 'Review run was cancelled.'; exit 0 }
-      #     if ($env:CLAUDE_OUTCOME -ne 'success') {
-      #       Send-Notice 'The automated review failed before producing results.'
-      #       exit 1
-      #     }
-
-      #     # ---- Load Claude's structured output from the execution file ----
-      #     $result = $null
-      #     try {
-      #       if (-not $env:EXEC_FILE -or -not (Test-Path -LiteralPath $env:EXEC_FILE)) { throw 'execution file missing' }
-      #       $messages = $json.DeserializeObject([System.IO.File]::ReadAllText($env:EXEC_FILE, $utf8))
-      #       foreach ($m in @($messages)) {
-      #         if ((Get-Field $m 'type') -eq 'result' -and $null -ne (Get-Field $m 'structured_output')) { $result = Get-Field $m 'structured_output' }
-      #       }
-      #       if ($null -eq $result) { throw 'no structured_output in the result message' }
-      #       if (-not ($result -is [System.Collections.Generic.Dictionary[string,object]]) -or -not ((Get-Field $result 'skipped') -is [bool]) -or -not ((Get-Field $result 'summary') -is [string])) {
-      #         throw 'structured_output does not match the schema'
-      #       }
-      #     } catch {
-      #       # Only fixed text is printed here (the throw messages above), never Claude's output
-      #       Write-Error "Claude returned no usable structured output: $($_.Exception.Message)" -ErrorAction Continue
-      #       Send-Notice 'The automated review finished but its output could not be read.'
-      #       exit 1
-      #     }
-
-      #     if ((Get-Field $result 'skipped') -eq $true) {
-      #       # The summary is Claude-written text, so it is not printed to the log
-      #       Write-Host 'Review skipped by the plugin (closed, draft, trivial, or already reviewed PR).'
-      #       exit 0
-      #     }
-
-      #     $comments = @()
-      #     $raw = Get-Field $result 'comments'
-      #     if ($null -ne $raw) { $comments = @($raw | Where-Object { $_ -is [System.Collections.Generic.Dictionary[string,object]] }) }
-
-      #     # ---- Refuse to post anything that looks like a credential ----
-      #     $allText = (@([string](Get-Field $result 'summary')) + @($comments | ForEach-Object { "$(Get-Field $_ 'path') $(Get-Field $_ 'body')" })) -join "`n"
-      #     $secretPatterns = @(
-      #       'gh[pousr]_[A-Za-z0-9]{30,}',
-      #       'github_pat_[A-Za-z0-9_]{20,}',
-      #       'sk-ant-[A-Za-z0-9_\-]{20,}',
-      #       'x-access-token:[^@\s]+@',
-      #       '-----BEGIN [A-Z ]*PRIVATE KEY-----',
-      #       'AKIA[0-9A-Z]{16}',
-      #       '(?i)authorization:\s*(basic|bearer|token)\s+[A-Za-z0-9+/=._\-]{16,}'
-      #     )
-      #     $leak = ($env:GH_TOKEN -and $allText.Contains($env:GH_TOKEN))
-      #     foreach ($pat in $secretPatterns) { if ($allText -match $pat) { $leak = $true } }
-      #     if ($leak) {
-      #       Write-Error 'Review output contains credential-like text; nothing was posted. Inspect the PR for prompt injection.' -ErrorAction Continue
-      #       Send-Notice 'The review was withheld because its output contained credential-like text. A maintainer should inspect this PR.'
-      #       exit 1
-      #     }
-
-      #     # ---- Neutralise @mentions outside code so injected text cannot ping people ----
-      #     $mentionRegex = '(```[\s\S]*?```|`[^`\r\n]*`)|(?<![A-Za-z0-9_.\-/])@(?=[A-Za-z0-9])'
-      #     function Protect-Text([string]$s) {
-      #       if (-not $s) { return '' }
-      #       return [regex]::Replace($s, $mentionRegex, { param($m) if ($m.Groups[1].Success) { $m.Value } else { '@' + [char]0x200B } })
-      #     }
-
-      #     # ---- Work out which RIGHT-side lines are commentable for each file ----
-      #     $validLines = New-Map
-      #     $page = 1
-      #     do {
-      #       $files = @(Invoke-GitHub 'GET' "pulls/$env:PR/files?per_page=100&page=$page" $null)
-      #       foreach ($f in $files) {
-      #         $set = New-Object 'System.Collections.Generic.HashSet[int]'
-      #         $patch = [string](Get-Field $f 'patch')
-      #         $n = 0
-      #         foreach ($l in ($patch -split "`n")) {
-      #           if ($l -match '^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@') { $n = [int]$Matches[1]; continue }
-      #           if ($n -gt 0 -and ($l.StartsWith('+') -or $l.StartsWith(' '))) { [void]$set.Add($n); $n++ }
-      #         }
-      #         $validLines[[string](Get-Field $f 'filename')] = $set
-      #       }
-      #       $page++
-      #     } while ($files.Count -eq 100 -and $page -le 30)
-
-      #     # ---- Split findings: inline where GitHub accepts them, the rest in the body ----
-      #     $inline = New-Object 'System.Collections.Generic.List[object]'
-      #     $outside = New-Object 'System.Collections.Generic.List[string]'
-      #     $all = New-Object 'System.Collections.Generic.List[string]'
-      #     foreach ($c in $comments) {
-      #       $path = [string](Get-Field $c 'path')
-      #       $line = 0
-      #       [void][int]::TryParse([string](Get-Field $c 'line'), [ref]$line)
-      #       $body = Protect-Text ([string](Get-Field $c 'body'))
-      #       $entry = "- **$(Protect-Text $path):$line**: $body"
-      #       $all.Add($entry)
-      #       if ($path -and $line -gt 0 -and $validLines.ContainsKey($path) -and $validLines[$path].Contains($line)) {
-      #         $d = New-Map; $d['path'] = $path; $d['line'] = $line; $d['side'] = 'RIGHT'; $d['body'] = $body
-      #         $inline.Add($d)
-      #       } else {
-      #         $outside.Add($entry)
-      #       }
-      #     }
-
-      #     # Count findings from the comments list itself, so the headline always
-      #     # matches what is posted (Claude's own prose counts can be wrong).
-      #     $countLine = 'No issues found.'
-      #     if ($comments.Count -gt 0) {
-      #       $perFile = @($comments | Group-Object { [string](Get-Field $_ 'path') } | Sort-Object Count -Descending |
-      #         ForEach-Object { "$($_.Count) in ``$(Protect-Text $_.Name)``" })
-      #       $noun = if ($comments.Count -eq 1) { 'issue' } else { 'issues' }
-      #       $countLine = "Found $($comments.Count) $($noun): " + ($perFile -join ', ') + '.'
-      #     }
-      #     $summary = $countLine + "`n`n" + (Protect-Text ([string](Get-Field $result 'summary')))
-      #     $bodyText = "## Claude code review`n`n$summary"
-      #     if ($outside.Count -gt 0) { $bodyText += "`n`n### Findings outside the diff`n`n" + ($outside -join "`n`n") }
-
-      #     $review = New-Map
-      #     $review['event'] = 'COMMENT'
-      #     $review['commit_id'] = $env:HEAD_SHA
-      #     $review['body'] = Limit-Text $bodyText
-      #     if ($inline.Count -gt 0) { $review['comments'] = $inline.ToArray() }
-
-      #     try {
-      #       [void](Invoke-GitHub 'POST' "pulls/$env:PR/reviews" $review)
-      #       Write-Host "Posted review: $($inline.Count) inline, $($outside.Count) in body."
-      #       exit 0
-      #     } catch {
-      #       $code = Get-StatusCode $_
-      #       # Only an unprocessable comment (422) is worth retrying without inline comments
-      #       if ($code -ne 422) { throw "Posting the review failed (HTTP $code)." }
-      #       # GitHub's error text can quote the rejected comment, so only the status is logged
-      #       Write-Warning 'Inline review rejected (HTTP 422); posting all findings in the review body.'
-      #     }
-
-      #     $fallback = New-Map
-      #     $fallback['event'] = 'COMMENT'
-      #     $fallback['commit_id'] = $env:HEAD_SHA
-      #     $text = "## Claude code review`n`n$summary"
-      #     if ($all.Count -gt 0) { $text += "`n`n" + ($all -join "`n`n") }
-      #     $fallback['body'] = Limit-Text $text
-      #     try {
-      #       [void](Invoke-GitHub 'POST' "pulls/$env:PR/reviews" $fallback)
-      #     } catch {
-      #       throw "Posting the fallback review failed (HTTP $(Get-StatusCode $_))."
-      #     }
-      #     Write-Host 'Posted review with all findings in the body.'
-
-      # # The action writes a GitHub token into .git/config; do not leave it on a
-      # # persistent runner after the job (the token expires, but the file stays).
-      # - name: Remove git credentials from the workspace
-      #   if: always()
-      #   shell: powershell
-      #   run: |
-      #     $ErrorActionPreference = 'Continue'
-      #     if (Test-Path -LiteralPath '.git') {
-      #       git remote set-url origin "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY.git" 2>&1 | Out-Null
-      #       git config --local --unset-all credential.helper 2>&1 | Out-Null
-      #       git config --local --unset-all "http.$env:GITHUB_SERVER_URL/.extraheader" 2>&1 | Out-Null
-      #     }
-      #     exit 0
-
-      # # Claude Code keeps a session transcript (PR code, tool output, review text)
-      # # per working directory under ~/.claude/projects. On a persistent runner that
-      # # would pile up a copy of every reviewed PR, so delete this repo's folder.
-      # - name: Remove Claude session data for this workspace
-      #   if: always()
-      #   shell: powershell
-      #   run: |
-      #     $ErrorActionPreference = 'Continue'
-      #     $projects = Join-Path $env:USERPROFILE '.claude\projects'
-      #     # Claude Code names the folder after the working directory, with every
-      #     # character other than a letter or digit replaced by '-'
-      #     $name = $env:GITHUB_WORKSPACE -replace '[^A-Za-z0-9]', '-'
-      #     $target = Join-Path $projects $name
-      #     if ($name -and (Test-Path -LiteralPath $target)) {
-      #       Remove-Item -LiteralPath $target -Recurse -Force
-      #       Write-Host "Removed Claude session data: $target"
-      #     } else {
-      #       Write-Host "No Claude session data found at $target"
-      #     }
-      #     exit 0
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+Footer
+© 2026 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Commun
