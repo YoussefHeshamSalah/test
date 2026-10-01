@@ -64,7 +64,7 @@ jobs:
 
           # Claude Code installed under the runner service account's OWN profile,
           # not a person's. Set the repo variable CLAUDE_CODE_EXECUTABLE to override.
-          path_to_claude_code_executable: ${{ vars.CLAUDE_CODE_EXECUTABLE || 'C:/Users/twi.test1/.local/bin/claude.exe' }}
+          path_to_claude_code_executable: ${{ vars.CLAUDE_CODE_EXECUTABLE || 'C:/Users/youssef/.local/bin/claude.exe' }}
 
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
