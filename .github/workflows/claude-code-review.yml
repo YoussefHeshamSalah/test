@@ -41,7 +41,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           # Posts as github-actions[bot]; skips the Claude App token exchange and its workflow validation
-          github_token: ${{ secrets.YOUSSEF_RUNNER }}
+          github_token: ${{ secrets.YOUSSEF_RUNNER1 }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
           # Windows runner: use the pre-installed Claude Code (runner account: twi.test1)
