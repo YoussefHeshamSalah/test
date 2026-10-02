@@ -38,7 +38,7 @@ jobs:
 
       # For review comments: save the comment context for Claude.
       # A reply fetches the comment that started the thread; a new comment on a
-      # code line fetches itself, so Claude knows which file and line it is on.
+      # code line fetches itself, so Claude knows which file and line (or line range) it is on.
       - name: Get the review comment context
         if: github.event_name == 'pull_request_review_comment'
         shell: powershell
@@ -54,7 +54,9 @@ jobs:
           $isReply = [bool]$env:PARENT_ID
           $id = if ($isReply) { $env:PARENT_ID } else { $env:OWN_ID }
           $c = Invoke-RestMethod -Uri "$env:GITHUB_API_URL/repos/$env:REPO/pulls/comments/$id" -Headers $headers -UseBasicParsing
-          $line = if ($c.line) { $c.line } else { $c.original_line }
+          $end = if ($c.line) { $c.line } else { $c.original_line }
+          $start = if ($c.start_line) { $c.start_line } elseif ($c.original_start_line) { $c.original_start_line } else { $end }
+          $line = if ($start -ne $end) { "$start-$end" } else { "$end" }
           $kind = if ($isReply) { 'Comment being replied to (start of the thread)' } else { 'The triggering comment itself, on this code location' }
           $dir = Join-Path $env:GITHUB_WORKSPACE '.claude-context'
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
