@@ -1,0 +1,64 @@
+name: Claude Mention
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  claude:
+    # Only for @claude comments on PRs, and only from people with access to the repo
+    if: |
+      contains(github.event.comment.body, '@claude') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request)
+
+    runs-on: self-hosted
+    timeout-minutes: 20
+
+    concurrency:
+      group: claude-mention-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
+
+    # contents: read means Claude can never push code, even if asked to
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Answer @claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ github.token }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          path_to_claude_code_executable: ${{ vars.CLAUDE_CODE_EXECUTABLE || 'C:/Users/YoussefHesham/.local/bin/claude.exe' }}
+
+          # No prompt: the action runs in tag mode and answers the @claude comment.
+          # Explain-only: no file edits, no commits, no web access, no GitHub API calls.
+          claude_args: |
+            --allowedTools "Read(./**),Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*)"
+            --disallowedTools "Read(./.git/**),Read(~/.claude/.credentials.json),Read(~/.claude.json),Read(~/.ssh/**),Read(~/.config/gh/**),Read(~/.git-credentials),Read(~/.gitconfig),Read(~/AppData/Roaming/**),Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(gh api:*),Bash(gh auth:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh repo:*)"
+
+          show_full_output: false
+
+      - name: Remove git credentials from the workspace
+        if: always()
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          if (Test-Path -LiteralPath '.git') {
+            git remote set-url origin "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY.git" 2>&1 | Out-Null
+            git config --local --unset-all credential.helper 2>&1 | Out-Null
+            git config --local --unset-all "http.$env:GITHUB_SERVER_URL/.extraheader" 2>&1 | Out-Null
+          }
+          exit 0
