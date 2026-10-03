@@ -267,7 +267,10 @@ Write-Output "Final dispatch body: $body"
 # Send the dispatch request
 Write-Output "Sending dispatch to $DispatchUrl..."
 try {
+    # -UseBasicParsing: without it Windows PowerShell 5.1 parses the response with the
+    # Internet Explorer engine, which throws on GitHub's empty 204 reply
     $response = Invoke-WebRequest -Uri $DispatchUrl `
+                                 -UseBasicParsing `
                                  -Method Post `
                                  -Headers $headers `
                                  -Body $body `
