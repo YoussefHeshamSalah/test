@@ -1,0 +1,56 @@
+name: Notify Main Repository for Claude Review (Reusable)
+
+# Called from each submodule repository's claude-code-review.yml: parses the related
+# PRs from the PR description, resolves their branches, and sends a
+# repository_dispatch to this main repository, which checks out all submodules on
+# those branches and runs the review (claude_code_review_one_job.yml).
+# The scripts come from this repository's devops folder.
+
+on:
+  workflow_call:
+    secrets:
+      review-token:
+        description: 'Token that can read the repositories and post the review'
+        required: true
+
+jobs:
+  notify:
+    runs-on: self-hosted
+    steps:
+      # Checks out the main repository into a subdirectory (main_repo) to access the scripts
+      - name: Checkout main repository for scripts
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/test
+          token: ${{ secrets.review-token }}
+          path: main_repo
+          persist-credentials: false
+
+      # Parses the PR description to extract related PR URLs, outputs them as relatedPRs JSON
+      - name: Parse PR description for related PRs
+        id: parse_pr_description
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.review-token }}
+        run: |
+          .\main_repo\devops\Auto_builds\Github_Actions\GHA-Parse-PR-Description.ps1
+
+      # Fetches branch details for related PRs using the parsed URLs, outputs them as prBranchDetails JSON.
+      # The JSON comes from the PR description, so it is passed through env, not ${{ }} inside run.
+      - name: Fetch branch details for related PRs
+        id: fetch_branches
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.review-token }}
+          RELATED_PRS: ${{ steps.parse_pr_description.outputs.relatedPRs }}
+        run: |
+          .\main_repo\devops\Auto_builds\Github_Actions\GHA-Get-PR-Branch-Details.ps1 -RelatedPRsJson $env:RELATED_PRS
+
+      # Triggers the Claude review workflow in the main repository with submodule branches and PR details
+      - name: Trigger Claude Review Workflow
+        shell: powershell
+        env:
+          REVIEW_TOKEN: ${{ secrets.review-token }}
+          PR_BRANCH_DETAILS: ${{ steps.fetch_branches.outputs.prBranchDetails }}
+        run: |
+          .\main_repo\devops\Auto_builds\Github_Actions\GHA-Trigger-Repo-Dispatch.ps1 -SubmoduleBranchesJson $env:PR_BRANCH_DETAILS -Token $env:REVIEW_TOKEN -EventType "Claude_Code_Review" -Repo "test"
