@@ -1,3 +1,6 @@
 [submodule "application/sub_modd_test"]
 	path = application/sub_modd_test
 	url = https://github.com/YoussefHeshamSalah/sub_modd_test.git
+[submodule "sub_mod_test_1"]
+	path = sub_mod_test_1
+	url = https://github.com/YoussefHeshamSalah/sub_mod_test_1.git
