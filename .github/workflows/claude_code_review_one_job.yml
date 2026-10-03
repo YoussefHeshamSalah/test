@@ -11,7 +11,7 @@ on:
   repository_dispatch:
     types: [Claude_Code_Review]
 
-run-name: ${{ format('Claude review {0} #{1}', github.event.client_payload.repo_name, github.event.client_payload.pull_request_num) }}
+run-name: "${{ format('Claude review {0} #{1}', github.event.client_payload.repo_name, github.event.client_payload.pull_request_num) }}"
 
 # Nothing is granted to github.token; all GitHub access uses REVIEW_TOKEN.
 permissions: {}
