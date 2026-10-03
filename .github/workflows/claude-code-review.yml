@@ -48,8 +48,51 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # Gate: if any earlier Claude review thread is still unresolved, skip the review
+      # and end here. If all are resolved (or there are none), clear the old review
+      # summaries to "." so the plugin does not skip as "already reviewed".
+      # GitHub keeps the edit history of the cleared summaries.
+      - name: Check earlier Claude review threads
+        id: gate
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
+          $owner, $name = $env:REPO.Split('/')
+
+          $query = 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved comments(first:1){nodes{author{login}}}}} reviews(first:100){nodes{databaseId body author{login}}}}}}'
+          $payload = @{ query = $query; variables = @{ owner = $owner; name = $name; number = [int]$env:PR } } | ConvertTo-Json -Depth 5
+          $resp = Invoke-RestMethod -Method Post -Uri $env:GITHUB_GRAPHQL_URL -Headers $headers -UseBasicParsing `
+                    -ContentType 'application/json' -Body ([System.Text.Encoding]::UTF8.GetBytes($payload))
+          $pr = $resp.data.repository.pullRequest
+
+          # Threads started by the review bot (the posting script runs as github-actions)
+          $botThreads = @($pr.reviewThreads.nodes | Where-Object { $_.comments.nodes[0].author.login -eq 'github-actions' })
+          $open = @($botThreads | Where-Object { -not $_.isResolved })
+          if ($open.Count -gt 0) {
+            Write-Host "$($open.Count) Claude review thread(s) still unresolved; skipping the review."
+            "run=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            exit 0
+          }
+
+          # All resolved (or none yet): clear earlier review summaries and run the review
+          $old = @($pr.reviews.nodes | Where-Object { $_.author.login -eq 'github-actions' -and $_.body -like '## Claude code review*' })
+          foreach ($r in $old) {
+            $body = @{ body = '.' } | ConvertTo-Json
+            [void](Invoke-RestMethod -Method Put -Uri "$env:GITHUB_API_URL/repos/$env:REPO/pulls/$env:PR/reviews/$($r.databaseId)" `
+                     -Headers $headers -UseBasicParsing -ContentType 'application/json' -Body ([System.Text.Encoding]::UTF8.GetBytes($body)))
+          }
+          Write-Host "No unresolved Claude threads; cleared $($old.Count) earlier summary(ies). Running the review."
+          "run=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       - name: Run Claude Code Review
         id: claude-review
+        if: steps.gate.outputs.run == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           # Automatic per-job token: posts as github-actions[bot], limited by the
